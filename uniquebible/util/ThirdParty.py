@@ -1561,7 +1561,7 @@ class Converter:
 
         if notes:
             insert = "INSERT INTO Notes (Book, Chapter, Verse, ID, Note) VALUES (?, ?, ?, ?, ?)"
-            notes = [(self.convertMyBibleBookNo(book), chapter, verse, id, self.formatNonBibleMyBibleModule(note, abbreviation)) for book, chapter, verse, id, note in notes]
+            notes = [(self.convertMyBibleBookNo(book), chapter, verse, id, self.formatNonBibleMyBibleModule(note, abbreviation)) for book, chapter, verse, id, note in notes if note]
             cursor.executemany(insert, notes)
 #            cursor.execute("COMMIT")
 
@@ -2542,5 +2542,11 @@ if __name__ == '__main__':
     # out = Converter().stripTheWordTags(line)
     # print(out)
 
-    file = "/home/oliver/Downloads/temp/2001b.xml"
-    Converter().importXMLBible(file)
+    import argparse
+    parser = argparse.ArgumentParser(description = f"""CLI Options""")
+    parser.add_argument("-f", "--filepath", action="store", dest="filepath", help="filepath")
+    args = parser.parse_args()
+
+    if args.filepath:
+        Converter().importMyBibleBible(args.filepath)
+
