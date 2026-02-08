@@ -1262,20 +1262,28 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
         # Check if file is successfully installed
         localFile = os.path.join(*fileItems)
         if os.path.isfile(localFile):
-            # Reload Master Control
-            t0 = time.monotonic()
-            self.logger.info("moduleInstalled: reloadControlPanel start")
-            self.reloadControlPanel(False)
-            self.logger.info("moduleInstalled: reloadControlPanel done (%.2fs)", time.monotonic() - t0)
             # Update install history
             config.installHistory[fileItems[-1]] = cloudID
             # Notify users
             if notification:
                 self.displayMessage(config.thisTranslation["message_installed"])
-            # Full refresh off the UI thread to avoid freezes.
-            self.logger.info("moduleInstalled: reloadResourcesAsync start")
-            self.reloadResourcesAsync(False)
-            self.logger.info("moduleInstalled: reloadResourcesAsync queued")
+            # Avoid expensive synchronous refresh after background installs.
+            # The refresh path (menu/control panel/resource rebuilds) can be heavy enough to make the
+            # UI appear frozen or even get the process killed under memory pressure.
+            if config.downloadGCloudModulesInSeparateThread:
+                self.logger.warning(
+                    "moduleInstalled: background install; skipping immediate UI refresh (restart recommended)"
+                )
+            else:
+                # Reload Master Control
+                t0 = time.monotonic()
+                self.logger.info("moduleInstalled: reloadControlPanel start")
+                self.reloadControlPanel(False)
+                self.logger.info("moduleInstalled: reloadControlPanel done (%.2fs)", time.monotonic() - t0)
+                # Full refresh off the UI thread to avoid freezes.
+                self.logger.info("moduleInstalled: reloadResourcesAsync start")
+                self.reloadResourcesAsync(False)
+                self.logger.info("moduleInstalled: reloadResourcesAsync queued")
         elif notification:
             self.displayMessage(config.thisTranslation["message_failedToInstall"])
         config.isDownloading = False
