@@ -32,7 +32,9 @@ cleanupTempFiles()
 
 # Setup logging
 logger = logging.getLogger('uba')
-if config.enableLogging:
+# Allow enabling logging without editing config.py (useful for debugging crashes).
+enable_logging = bool(getattr(config, "enableLogging", False)) or os.environ.get("UBA_ENABLE_LOGGING") == "1"
+if enable_logging:
     logger.setLevel(logging.DEBUG)
     logHandler = handlers.TimedRotatingFileHandler('uba.log', when='D', interval=1, backupCount=0)
     logHandler.setLevel(logging.DEBUG)
@@ -44,6 +46,7 @@ else:
 
 def global_excepthook(type, value, tb):
     logger.error("Uncaught exception", exc_info=(type, value, tb))
-    print(traceback.format_exc())
+    # Use the exception passed to the hook; traceback.format_exc() can be empty here.
+    print("".join(traceback.format_exception(type, value, tb)))
 
 sys.excepthook = global_excepthook
