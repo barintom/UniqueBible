@@ -3,14 +3,14 @@ import zipfile
 from uniquebible import config
 import os
 if config.qtLibrary == "pyside6":
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import Qt, QThread, QObject, Signal
     from PySide6.QtWidgets import QRadioButton
     from PySide6.QtWidgets import QCheckBox
     from PySide6.QtWidgets import QGroupBox
     from PySide6.QtGui import QStandardItemModel, QStandardItem
     from PySide6.QtWidgets import QDialog, QLabel, QTableView, QAbstractItemView, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QMessageBox
 else:
-    from qtpy.QtCore import Qt
+    from qtpy.QtCore import Qt, QThread, QObject, Signal
     from qtpy.QtWidgets import QRadioButton
     from qtpy.QtWidgets import QCheckBox
     from qtpy.QtWidgets import QGroupBox
@@ -21,6 +21,32 @@ from uniquebible.util.CatalogUtil import CatalogUtil
 from uniquebible.util.FileUtil import FileUtil
 from uniquebible.util.GithubUtil import GithubUtil
 from uniquebible.util.GitHubRepoCache import gitHubRepoCacheData
+
+
+class _GitHubModuleDownloadWorker(QObject):
+    finished = Signal(bool, str)
+
+    def __init__(self, repo, sha, zipFilePath, installDirectory):
+        super().__init__()
+        self.repo = repo
+        self.sha = sha
+        self.zipFilePath = zipFilePath
+        self.installDirectory = installDirectory
+
+    def run(self):
+        try:
+            os.makedirs(self.installDirectory, exist_ok=True)
+            github = GithubUtil(self.repo)
+            github.downloadFile(self.zipFilePath, self.sha)
+            with zipfile.ZipFile(self.zipFilePath, 'r') as zipped:
+                zipped.extractall(self.installDirectory)
+            try:
+                os.remove(self.zipFilePath)
+            except Exception:
+                pass
+            self.finished.emit(True, "")
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class LibraryCatalogDialog(QDialog):
@@ -339,17 +365,34 @@ class LibraryCatalogDialog(QDialog):
             self.downloadButton.setStyleSheet("")
         item = self.remoteCatalogData[self.catalogEntryId]
         id, filename, type, directory, file, description, repo, installDirectory, sha = item
-        github = GithubUtil(repo)
         installDirectory = os.path.join(config.marvelData, installDirectory)
-        file = os.path.join(installDirectory, filename + ".zip")
-        github.downloadFile(file, sha)
-        with zipfile.ZipFile(file, 'r') as zipped:
-            zipped.extractall(installDirectory)
-        os.remove(file)
-        self.displayMessage(filename + " " + config.thisTranslation["message_installed"])
-        self.localCatalog = CatalogUtil.reloadLocalCatalog()
-        self.localCatalogData = self.getLocalCatalogItems()
-        self.resetItems()
+        zipFilePath = os.path.join(installDirectory, filename + ".zip")
+
+        # Downloading/extracting large modules can take a long time; do it off the UI thread
+        # to avoid "freezing" the app window.
+        self._downloadThread = QThread()
+        self._downloadWorker = _GitHubModuleDownloadWorker(repo, sha, zipFilePath, installDirectory)
+        self._downloadWorker.moveToThread(self._downloadThread)
+        self._downloadThread.started.connect(self._downloadWorker.run)
+
+        def _done(ok, err):
+            self._downloadThread.quit()
+            if ok:
+                self.displayMessage(filename + " " + config.thisTranslation["message_installed"])
+                self.localCatalog = CatalogUtil.reloadLocalCatalog()
+                self.localCatalogData = self.getLocalCatalogItems()
+                self.resetItems()
+            else:
+                self.displayMessage(f"{filename} {config.thisTranslation.get('message_failedToInstall', 'failed to install')}!\n{err}")
+            # Reset button state
+            self.downloadButton.setEnabled(True)
+            if self.location == "local":
+                self.downloadButton.setEnabled(False)
+
+        self._downloadWorker.finished.connect(_done)
+        self._downloadWorker.finished.connect(self._downloadWorker.deleteLater)
+        self._downloadThread.finished.connect(self._downloadThread.deleteLater)
+        self._downloadThread.start()
 
 
 ## Standalone development code
