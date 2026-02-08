@@ -55,11 +55,26 @@ class DownloadProcess(QObject):
             print(ex)
             connection = False
         if connection and os.path.isfile(self.localFile) and self.localFile.endswith(".zip"):
-            zipObject = zipfile.ZipFile(self.localFile, "r")
+            # Extract in a subprocess. Zip extraction is CPU-heavy Python code and can still
+            # starve the Qt UI due to the GIL even when called from a QThread.
             path, *_ = os.path.split(self.localFile)
-            zipObject.extractall(path)
-            zipObject.close()
-            os.remove(self.localFile)
+            extract_code = (
+                "import os, zipfile\n"
+                f"zf={self.localFile!r}\n"
+                f"out={path!r}\n"
+                "with zipfile.ZipFile(zf,'r') as z: z.extractall(out)\n"
+                "try: os.remove(zf)\n"
+                "except Exception: pass\n"
+            )
+            proc = subprocess.run(
+                [sys.executable, "-c", extract_code],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if proc.returncode != 0 and proc.stderr:
+                print(proc.stderr)
         if config.downloadGCloudModulesInSeparateThread:
             # Emit a signal to notify that download process is finished
             self.finished.emit()
