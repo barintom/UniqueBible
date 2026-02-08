@@ -198,9 +198,8 @@ class MaterialColorDialog(QDialog):
             ("config.darkThemeActiveVerseColor", config.darkThemeActiveVerseColor),
             ("config.lightThemeActiveVerseBackgroundColor", getattr(config, "lightThemeActiveVerseBackgroundColor", "")),
             ("config.darkThemeActiveVerseBackgroundColor", getattr(config, "darkThemeActiveVerseBackgroundColor", "")),
-            # Intentionally not stored in theme colour files; these apply to all themes:
-            # ("config.splitterHandleColor", getattr(config, "splitterHandleColor", "")),
-            # ("config.splitterHandleThickness", getattr(config, "splitterHandleThickness", 5)),
+            ("config.splitterHandleColor", getattr(config, "splitterHandleColor", "")),
+            ("config.splitterHandleThickness", getattr(config, "splitterHandleThickness", 5)),
             #("config.textSelectionColor", config.textSelectionColor),
         )
         with open(fileName, "w", encoding="utf-8") as fileObj:
