@@ -1,5 +1,6 @@
 import os, zipfile, platform, subprocess, sys
 from uniquebible import config
+import logging, time
 # import threading
 if config.qtLibrary == "pyside6":
     from PySide6.QtWidgets import QGridLayout, QPushButton, QDialog, QLabel
@@ -21,6 +22,9 @@ class DownloadProcess(QObject):
     def downloadFile(self):
         # Prefer running gdown as a subprocess. In practice this keeps the Qt UI more responsive
         # than calling the Python API directly (less GIL contention during large downloads).
+        logger = logging.getLogger("uba")
+        t0 = time.monotonic()
+        logger.info("DownloadProcess: start cloudFile=%s localFile=%s", self.cloudFile, self.localFile)
         try:
             if not config.gdownIsUpdated:
                 installmodule("--upgrade gdown")
@@ -42,21 +46,27 @@ class DownloadProcess(QObject):
                 )
                 if proc.returncode == 0 and os.path.isfile(self.localFile):
                     print("Downloaded " + self.localFile)
+                    logger.info("DownloadProcess: gdown ok (%.2fs) file=%s", time.monotonic() - t0, self.localFile)
                     connection = True
                 else:
                     if proc.stderr:
                         print(proc.stderr)
+                        logger.warning("DownloadProcess: gdown failed rc=%s stderr=%s", proc.returncode, proc.stderr.strip())
                     connection = False
             except Exception as ex:
                 print(ex)
+                logger.exception("DownloadProcess: gdown exception")
                 connection = False
         except Exception as ex:
             print("Failed to download '{0}'!".format(self.cloudFile))
             print(ex)
+            logger.exception("DownloadProcess: outer exception")
             connection = False
         if connection and os.path.isfile(self.localFile) and self.localFile.endswith(".zip"):
             # Extract in a subprocess. Zip extraction is CPU-heavy Python code and can still
             # starve the Qt UI due to the GIL even when called from a QThread.
+            t_extract = time.monotonic()
+            logger.info("DownloadProcess: extracting zip (subprocess) file=%s", self.localFile)
             path, *_ = os.path.split(self.localFile)
             extract_code = (
                 "import os, zipfile\n"
@@ -75,8 +85,12 @@ class DownloadProcess(QObject):
             )
             if proc.returncode != 0 and proc.stderr:
                 print(proc.stderr)
+                logger.warning("DownloadProcess: extract failed rc=%s stderr=%s", proc.returncode, proc.stderr.strip())
+            else:
+                logger.info("DownloadProcess: extract ok (%.2fs)", time.monotonic() - t_extract)
         if config.downloadGCloudModulesInSeparateThread:
             # Emit a signal to notify that download process is finished
+            logger.info("DownloadProcess: finished signal (%.2fs total)", time.monotonic() - t0)
             self.finished.emit()
 
 

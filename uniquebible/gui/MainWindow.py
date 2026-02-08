@@ -1,4 +1,5 @@
 import os, signal, sys, re, base64, webbrowser, platform, subprocess, requests, logging, zipfile, glob
+import threading
 from uniquebible import config
 import markdown, time
 #from distutils import util
@@ -158,6 +159,7 @@ class _ReloadResourcesWorker(QObject):
 
     def run(self):
         try:
+            t0 = time.monotonic()
             # Reload local catalog first (updates what is installed).
             CatalogUtil.reloadLocalCatalog()
 
@@ -177,6 +179,7 @@ class _ReloadResourcesWorker(QObject):
             # Build CrossPlatform resource lists (can be slow).
             cp = CrossPlatform()
             cp.setupResourceLists()
+            # Note: state passing avoids touching Qt objects in this thread.
             self.finished.emit(cp.__dict__, "")
         except Exception as e:
             self.finished.emit(None, str(e))
@@ -792,6 +795,8 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
 
     def reloadResourcesAsync(self, show=False):
         # The synchronous reloadResources() can block the UI for a long time after installs.
+        self.logger.info("reloadResourcesAsync: start show=%s", show)
+        t0 = time.monotonic()
         self._reloadResourcesThread = QThread()
         self._reloadResourcesWorker = _ReloadResourcesWorker()
         self._reloadResourcesWorker.moveToThread(self._reloadResourcesThread)
@@ -800,10 +805,11 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
         def _done(state, err):
             self._reloadResourcesThread.quit()
             if state is None:
-                self.logger.warning("reloadResourcesAsync failed: %s", err)
+                self.logger.warning("reloadResourcesAsync: failed after %.2fs: %s", time.monotonic() - t0, err)
                 # Still try to refresh menus minimally.
                 self.setupMenuLayout(config.menuLayout)
                 return
+            self.logger.info("reloadResourcesAsync: worker finished after %.2fs", time.monotonic() - t0)
             # Update the existing CrossPlatform instance in-place (other components may hold a reference).
             for k, v in state.items():
                 try:
@@ -817,6 +823,7 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
                     pass
             self.setupMenuLayout(config.menuLayout)
             self.reloadControlPanel(show)
+            self.logger.info("reloadResourcesAsync: UI refresh done (%.2fs total)", time.monotonic() - t0)
 
         self._reloadResourcesWorker.finished.connect(_done)
         self._reloadResourcesWorker.finished.connect(self._reloadResourcesWorker.deleteLater)
@@ -1195,21 +1202,30 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
 
     def downloadFile(self, databaseInfo, notification=True):
         # Prevent downloading multiple files at the same time.
+        if config.isDownloading:
+            # Some code paths call downloadFile() directly without going through downloadHelper().
+            self.logger.warning("downloadFile: already downloading; ignoring new request databaseInfo=%s", databaseInfo)
+            return
         config.isDownloading = True
         # Retrieve file information
         fileItems, cloudID, *_ = databaseInfo
         cloudFile = "https://drive.google.com/uc?id={0}".format(cloudID)
         localFile = "{0}.zip".format(os.path.join(*fileItems))
+        self.logger.info("downloadFile: start cloudID=%s localFile=%s separateThread=%s", cloudID, localFile, config.downloadGCloudModulesInSeparateThread)
 
         if config.downloadGCloudModulesInSeparateThread:
             # Configure a QThread
             self.downloadthread = QThread()
             self.downloadProcess = DownloadProcess(cloudFile, localFile)
             self.downloadProcess.moveToThread(self.downloadthread)
+            # Save context for the finished callback. Only one download at a time is supported.
+            self._download_context = (fileItems, cloudID, notification)
             # Connect actions
             self.downloadthread.started.connect(self.downloadProcess.downloadFile)
             self.downloadProcess.finished.connect(self.downloadthread.quit)
-            self.downloadProcess.finished.connect(lambda: self.moduleInstalled(fileItems, cloudID, notification))
+            # Avoid lambda here: in PySide/PyQt, a lambda can run in the emitting thread.
+            # We want Qt to deliver the slot to the MainWindow (GUI) thread via queued connection.
+            self.downloadProcess.finished.connect(self._onDownloadProcessFinished)
             self.downloadProcess.finished.connect(self.downloadProcess.deleteLater)
             self.downloadthread.finished.connect(self.downloadthread.deleteLater)
             # Start a QThread
@@ -1222,21 +1238,44 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             if self.downloader:
                 self.downloader.close()
 
+    def _onDownloadProcessFinished(self):
+        try:
+            ctx = getattr(self, "_download_context", None)
+            if not ctx:
+                self.logger.warning("_onDownloadProcessFinished: missing context")
+                return
+            fileItems, cloudID, notification = ctx
+            self.moduleInstalled(fileItems, cloudID, notification)
+        finally:
+            # Clear regardless of success to avoid stale state on subsequent installs.
+            self._download_context = None
+
     def moduleInstalled(self, fileItems, cloudID, notification=True):
+        self.logger.info(
+            "moduleInstalled: callback cloudID=%s fileItems=%s pythonThread=%s",
+            cloudID,
+            fileItems,
+            threading.current_thread().name,
+        )
         if hasattr(self, "downloader") and self.downloader.isVisible():
             self.downloader.close()
         # Check if file is successfully installed
         localFile = os.path.join(*fileItems)
         if os.path.isfile(localFile):
             # Reload Master Control
+            t0 = time.monotonic()
+            self.logger.info("moduleInstalled: reloadControlPanel start")
             self.reloadControlPanel(False)
+            self.logger.info("moduleInstalled: reloadControlPanel done (%.2fs)", time.monotonic() - t0)
             # Update install history
             config.installHistory[fileItems[-1]] = cloudID
             # Notify users
             if notification:
                 self.displayMessage(config.thisTranslation["message_installed"])
             # Full refresh off the UI thread to avoid freezes.
+            self.logger.info("moduleInstalled: reloadResourcesAsync start")
             self.reloadResourcesAsync(False)
+            self.logger.info("moduleInstalled: reloadResourcesAsync queued")
         elif notification:
             self.displayMessage(config.thisTranslation["message_failedToInstall"])
         config.isDownloading = False
