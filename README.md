@@ -159,6 +159,12 @@ To run GUI mode:
 
 > uniquebible
 
+To run GUI mode from a source checkout (this repo) using the local virtualenv:
+
+> .venv/bin/python uniquebible/uba.py gui
+
+Note: if you previously installed UniqueBible via `pip install uniquebible`, the `uniquebible` command may point to that older/global install. Using the explicit `.venv/bin/python ...` command above avoids PATH/version conflicts. If needed, uninstall the global install with `python -m pip uninstall uniquebible` (or `pipx uninstall uniquebible` if you installed it with pipx).
+
 More about installation at https://github.com/eliranwong/UniqueBible/wiki/Installation
 
 More about running modes at https://github.com/eliranwong/UniqueBible/wiki/UBA-Run-Modes
