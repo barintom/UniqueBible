@@ -3,10 +3,10 @@ from uniquebible import config
 # import threading
 if config.qtLibrary == "pyside6":
     from PySide6.QtWidgets import QGridLayout, QPushButton, QDialog, QLabel
-    from PySide6.QtCore import QObject, Signal
+    from PySide6.QtCore import QObject, Signal, QTimer
 else:
     from qtpy.QtWidgets import QGridLayout, QPushButton, QDialog, QLabel
-    from qtpy.QtCore import QObject, Signal
+    from qtpy.QtCore import QObject, Signal, QTimer
 from uniquebible.install.module import *
 
 
@@ -71,7 +71,8 @@ class Downloader(QDialog):
         super().__init__()
         self.parent = parent
         self.setWindowTitle(config.thisTranslation["message_downloadHelper"])
-        self.setModal(True)
+        # When downloading in a separate thread, don't block the whole UI.
+        self.setModal(not config.downloadGCloudModulesInSeparateThread)
 
         self.databaseInfo = databaseInfo
         fileItems, *_ = databaseInfo
@@ -100,14 +101,14 @@ class Downloader(QDialog):
         self.setLayout(self.layout)
 
     def startDownloadFile(self):
-        self.hide()
         self.setWindowTitle(config.thisTranslation["message_installing"])
         self.messageLabel.setText(config.thisTranslation["message_installing"])
         self.downloadButton.setText(config.thisTranslation["message_installing"])
         self.downloadButton.setEnabled(False)
-        self.cancelButton.setText(config.thisTranslation["runInBackground"])
-        self.show()
-        self.downloadFile(True)
+        if config.downloadGCloudModulesInSeparateThread:
+            self.cancelButton.setText(config.thisTranslation["runInBackground"])
+        # Allow the dialog to repaint before starting the (potentially long) work.
+        QTimer.singleShot(0, lambda: self.downloadFile(True))
 
     # Put in a separate funtion to allow downloading file without gui
     def downloadFile(self, notification=True):
