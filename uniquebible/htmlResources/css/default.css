@@ -656,7 +656,7 @@ vid.verse-selected {
     padding: 2px 4px;
 }
 
-span.verse-selected {
+span[id^='s'].verse-selected {
     background-color: #e0e0e0;
     border-radius: 3px;
     padding: 2px 4px;
