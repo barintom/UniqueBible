@@ -2,6 +2,16 @@
 
 import os, sys, subprocess, platform, ctypes
 from shutil import copyfile
+
+# When running this file directly from the source tree, ensure the repo root is
+# on sys.path before any `uniquebible.*` imports. Otherwise Python may pick up a
+# shadowing namespace package from site-packages (missing `__init__.py`), which
+# breaks `from uniquebible import ...` imports.
+_this_dir = os.path.dirname(os.path.realpath(__file__))
+_repo_root = os.path.dirname(_this_dir)
+if _repo_root and _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from uniquebible.install.module import *
 
 # requires python 3.7+
@@ -31,8 +41,11 @@ def main():
         icon_path = os.path.abspath(os.path.join(sys.path[0], "htmlResources", "UniqueBibleApp.ico"))
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(icon_path)
 
-    # Do NOT use sys.executable directly
-    python = os.path.basename(sys.executable)
+    # Always reuse the same interpreter that is running this script.
+    # Using only the basename (e.g. "python") breaks when UBA is installed
+    # into a virtualenv but the virtualenv is not activated (PATH mismatch).
+    python = sys.executable
+    mainModule = f"{__package__}.main" if __package__ else "uniquebible.main"
     mainFile = os.path.join(wd, "main.py")
     #major, minor, micro, *_ = sys.version_info
     cpu = ""
@@ -138,21 +151,17 @@ Name=Unique Bible App
 
     # Run main.py
     if thisOS == "Windows":
-        if python.endswith(".exe"):
-            python = python[:-4]
-        # Run main.py
-        mainPy = "main.py {0}".format(initialCommand) if initialCommand else "main.py"
         if enableCli:
             exec("from uniquebible.main import *", globals())
         else:
-            subprocess.Popen("{0} {1}".format(python, mainPy), shell=True)
+            subprocess.Popen([python, "-m", mainModule, initialCommand] if initialCommand else [python, "-m", mainModule])
     else:
         # Run main.py
         if enableCli:
             #os.system("{0} {1}{2}".format(python, mainFile, f" {initialCommand}" if initialCommand else ""))
             exec("from uniquebible.main import *", globals())
         else:
-            subprocess.Popen([python, mainFile, initialCommand] if initialCommand else [python, mainFile])
+            subprocess.Popen([python, "-m", mainModule, initialCommand] if initialCommand else [python, "-m", mainModule])
 
 def gui():
     sys.argv.insert(1, "gui")

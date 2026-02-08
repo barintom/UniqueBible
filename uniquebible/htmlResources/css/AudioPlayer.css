@@ -1,11 +1,31 @@
+/*
+ * UniqueBible.app Audio Player stylesheet.
+ *
+ * Loaded by:
+ * - `uniquebible/util/HtmlGeneratorUtil.py` `HtmlGeneratorUtil.getAudioPlayer()`
+ *   which generates an HTML page that includes:
+ *   - <link rel="stylesheet" href="css/AudioPlayer.css">
+ *   - <script src="js/AudioPlayer.js"> (builds the player DOM)
+ *
+ * Main DOM blocks created by AudioPlayer.js:
+ * - `.ap*`      : the bottom control bar (play/pause, progress, volume, etc).
+ * - `.pl*`      : playlist overlay/list.
+ * - `.eq*`      : tiny "playing" equalizer animation.
+ * - `.ap-image` : optional image area above the control bar.
+ */
+
 *,
 *:before,
 *:after {
   box-sizing: border-box;
 }
+
+/* Utility: force-hide any element (used by the player to toggle controls). */
 .hide {
   display: none !important;
 }
+
+/* Reset default button styling (player uses SVG/icons). */
 button {
   margin: 0;
   padding: 0;

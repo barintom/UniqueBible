@@ -1,3 +1,15 @@
+/*
+ * UniqueBible.app Remote HTTP Server UI stylesheet.
+ *
+ * Loaded by:
+ * - `uniquebible/util/RemoteHttpHandler.py` (web UI wrapper) inserts:
+ *   - <link rel="stylesheet" href="css/http_server.css">
+ *   - <link rel="stylesheet" href="css/custom.css"> (loaded after this for overrides)
+ *
+ * Used for the web/remote interface (menus, overlays, and modal dialogs). Bible text itself is
+ * generally rendered in iframes using the standard theme CSS (default/dark/night).
+ */
+
 /* START of OVERLAY-NAV*/
 
     .overlay-content {
@@ -26,6 +38,7 @@
     }
     /* END of OVERLAY-NAV*/
 
+/* Book list grid sections (e.g. OT/NT book tiles). */
 div.bookSection {
     display: inline-block;
     text-align: center;
@@ -34,7 +47,7 @@ div.bookSection {
     margin-right: 10px;
 }
 
-/* Add Animation */
+/* Common "zoom" animation helper; JS can add class="animate" to modal/popup content. */
 .animate {
     -webkit-animation: animatezoom 0.6s;
     animation: animatezoom 0.6s
@@ -70,6 +83,7 @@ div.bookSection {
     to {opacity: 1}
 }
 
+/* Generic centered modal backdrop + content box (e.g. forms). */
 .modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
@@ -93,8 +107,7 @@ div.bookSection {
     /* Could be more or less, depending on screen size */
 }
 
-/* Modal - Message */
-/* The Modal (background) */
+/* Bottom-sheet style message modal (used for notifications / messages). */
 .modal2 {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */

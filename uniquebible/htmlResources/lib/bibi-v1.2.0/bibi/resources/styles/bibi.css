@@ -10,6 +10,15 @@
  *      - Material Icons : © Material Design Authors & Google Inc. - https://material.io/resources/icons / Licensed under the Apache License version 2.0 - https://www.apache.org/licenses/LICENSE-2.0.html
  *
  */
+ 
+/* UniqueBible.app: third-party Bibi EPUB reader stylesheet.
+ *
+ * Loaded by:
+ * - `uniquebible/htmlResources/lib/bibi-v1.2.0/bibi/index.html`
+ *   (used as the ePub viewer on Windows; see `uniquebible/plugins/menu/ePub Viewer.py`).
+ *
+ * Note: vendored from the upstream Bibi project. Avoid editing rules here unless necessary.
+ */
 /*!
  * Material Icons by Material Design Authors / Google Inc. - https://material.io/icons
  * Licensed under the Apache License Version 2.0 - https://www.apache.org/licenses/LICENSE-2.0

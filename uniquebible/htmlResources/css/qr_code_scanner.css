@@ -1,3 +1,17 @@
+/*
+ * UniqueBible.app QR code scanner stylesheet.
+ *
+ * Loaded by:
+ * - `uniquebible/htmlResources/qr_code_scanner.html`
+ * - `uniquebible/htmlResources/qr_code_scanner_sc.html`
+ * - `uniquebible/htmlResources/qr_code_scanner_tc.html`
+ *
+ * Key elements:
+ * - `#qr-canvas`: canvas used to display the camera frame / scan target.
+ * - `#btn-scan-qr`: scan button (contains an <img> icon).
+ * - `#qr-result`: decoded QR content output.
+ */
+
 html {
   height: 100%;
 }

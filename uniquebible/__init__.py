@@ -1,6 +1,6 @@
 import os, requests, re, socket
 import importlib.metadata
-from shutil import copy, copytree
+from shutil import copy, copytree, copy2
 from pathlib import Path
 from packaging import version
 from uniquebible import config
@@ -38,12 +38,45 @@ if os.path.isfile(backupFile) and not hasattr(config, "mainText"):
 # set up folders for storing user content in ~/UniqueBible
 if not os.path.isdir(ubahome):
     Path(ubahome).mkdir(parents=True, exist_ok=True)
+
+def _copy_missing_items(source_folder, target_folder):
+    """
+    Copy files from source_folder into target_folder without overwriting existing files.
+    This helps recover from partially-created user directories (e.g. interrupted first run).
+    """
+    for root, dirs, files in os.walk(source_folder):
+        rel = os.path.relpath(root, source_folder)
+        dest_root = target_folder if rel == "." else os.path.join(target_folder, rel)
+        Path(dest_root).mkdir(parents=True, exist_ok=True)
+        for d in dirs:
+            Path(os.path.join(dest_root, d)).mkdir(parents=True, exist_ok=True)
+        for f in files:
+            src_f = os.path.join(root, f)
+            dst_f = os.path.join(dest_root, f)
+            if not os.path.exists(dst_f):
+                try:
+                    copy2(src_f, dst_f)
+                except:
+                    pass
+
 for i in ("audio", "htmlResources", "import", "macros", "marvelData", "music", "notes", "temp", "terminal_history", "terminal_mode", "thirdParty", "video", "webstorage", "workspace"):
     sourceFolder = os.path.join(config.packageDir, i)
     targetFolder = os.path.join(ubahome, i)
     if not os.path.isdir(targetFolder):
         print(f"Setting up user directory '{i}' ...")
         copytree(sourceFolder, targetFolder, dirs_exist_ok=True)
+    elif i == "marvelData":
+        # If a user directory exists but is missing core subfolders, recover by copying
+        # only missing items from the packaged resources (without overwriting user data).
+        required_subdir = os.path.join(targetFolder, "bibles")
+        if not os.path.isdir(required_subdir) and os.path.isdir(sourceFolder):
+            print("Recovering missing resources in user directory 'marvelData' ...")
+            _copy_missing_items(sourceFolder, targetFolder)
+    elif i == "thirdParty":
+        required_subdir = os.path.join(targetFolder, "dictionaries")
+        if not os.path.isdir(required_subdir) and os.path.isdir(sourceFolder):
+            print("Recovering missing resources in user directory 'thirdParty' ...")
+            _copy_missing_items(sourceFolder, targetFolder)
     #copytree(i, os.path.join(ubahome, i), dirs_exist_ok=True)
 
 # set up map images
