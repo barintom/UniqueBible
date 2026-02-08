@@ -795,6 +795,14 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
 
     def reloadResourcesAsync(self, show=False):
         # The synchronous reloadResources() can block the UI for a long time after installs.
+        # Guard against overlapping reloads (e.g., multiple downloads finishing close together).
+        if hasattr(self, "_reloadResourcesThread") and self._reloadResourcesThread is not None:
+            try:
+                if self._reloadResourcesThread.isRunning():
+                    self.logger.warning("reloadResourcesAsync: already running; skipping new request")
+                    return
+            except Exception:
+                pass
         self.logger.info("reloadResourcesAsync: start show=%s", show)
         t0 = time.monotonic()
         self._reloadResourcesThread = QThread()
@@ -806,8 +814,6 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             self._reloadResourcesThread.quit()
             if state is None:
                 self.logger.warning("reloadResourcesAsync: failed after %.2fs: %s", time.monotonic() - t0, err)
-                # Still try to refresh menus minimally.
-                self.setupMenuLayout(config.menuLayout)
                 return
             self.logger.info("reloadResourcesAsync: worker finished after %.2fs", time.monotonic() - t0)
             # Update the existing CrossPlatform instance in-place (other components may hold a reference).
@@ -816,19 +822,66 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
                     setattr(self.crossPlatform, k, v)
                 except Exception:
                     pass
+            # Refresh resource lists in-place. Avoid tearing down/rebuilding the whole UI:
+            # `reloadControlPanel()` closes and recreates a large window and can make the app appear frozen.
+            try:
+                self.setupResourceLists()
+            except Exception:
+                pass
             if self.controlPanel:
                 try:
                     self.controlPanel.setupResourceLists()
                 except Exception:
                     pass
-            self.setupMenuLayout(config.menuLayout)
-            self.reloadControlPanel(show)
+            # Update bible selection UI controls (combo/button/menu) to pick up newly installed modules.
+            try:
+                self.refreshBibleVersionWidgets()
+            except Exception:
+                pass
             self.logger.info("reloadResourcesAsync: UI refresh done (%.2fs total)", time.monotonic() - t0)
 
         self._reloadResourcesWorker.finished.connect(_done)
         self._reloadResourcesWorker.finished.connect(self._reloadResourcesWorker.deleteLater)
         self._reloadResourcesThread.finished.connect(self._reloadResourcesThread.deleteLater)
         self._reloadResourcesThread.start()
+
+    def refreshBibleVersionWidgets(self):
+        """
+        Update bible-version related widgets after installs without rebuilding the whole menu layout.
+        This is intentionally lightweight to keep the UI responsive.
+        """
+        # Rebuild the list used by the direct-selection combo.
+        try:
+            self.bibleVersions = BiblesSqlite().getBibleList()
+        except Exception:
+            self.bibleVersions = getattr(self, "bibleVersions", [])
+
+        if getattr(self, "versionCombo", None) is not None:
+            try:
+                self.versionCombo.blockSignals(True)
+                self.versionCombo.clear()
+                self.versionCombo.addItems(self.bibleVersions)
+                if config.mainText in self.bibleVersions:
+                    self.versionCombo.setCurrentIndex(self.bibleVersions.index(config.mainText))
+                self.versionCombo.blockSignals(False)
+            except Exception:
+                try:
+                    self.versionCombo.blockSignals(False)
+                except Exception:
+                    pass
+
+        # Update the material layout bible selector menu if present.
+        if hasattr(self, "bibleSelection") and getattr(self, "bibleSelection", None) is not None and config.menuLayout in ("material",):
+            try:
+                self.setBibleSelection()
+            except Exception:
+                pass
+
+        # Keep the rest of UI in sync with the currently selected text.
+        try:
+            self.updateVersionCombo()
+        except Exception:
+            pass
 
     def reloadControlPanel(self, show=True):
         if self.controlPanel:
@@ -1267,23 +1320,10 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             # Notify users
             if notification:
                 self.displayMessage(config.thisTranslation["message_installed"])
-            # Avoid expensive synchronous refresh after background installs.
-            # The refresh path (menu/control panel/resource rebuilds) can be heavy enough to make the
-            # UI appear frozen or even get the process killed under memory pressure.
-            if config.downloadGCloudModulesInSeparateThread:
-                self.logger.warning(
-                    "moduleInstalled: background install; skipping immediate UI refresh (restart recommended)"
-                )
-            else:
-                # Reload Master Control
-                t0 = time.monotonic()
-                self.logger.info("moduleInstalled: reloadControlPanel start")
-                self.reloadControlPanel(False)
-                self.logger.info("moduleInstalled: reloadControlPanel done (%.2fs)", time.monotonic() - t0)
-                # Full refresh off the UI thread to avoid freezes.
-                self.logger.info("moduleInstalled: reloadResourcesAsync start")
-                self.reloadResourcesAsync(False)
-                self.logger.info("moduleInstalled: reloadResourcesAsync queued")
+            # Reload resources asynchronously so newly installed modules show up without restart.
+            self.logger.info("moduleInstalled: reloadResourcesAsync start")
+            self.reloadResourcesAsync(False)
+            self.logger.info("moduleInstalled: reloadResourcesAsync queued")
         elif notification:
             self.displayMessage(config.thisTranslation["message_failedToInstall"])
         config.isDownloading = False
