@@ -108,6 +108,51 @@ class _ModulePostInstallWorker(QObject):
             self.finished.emit(False, str(e))
 
 
+class _GitHubRepoIndexWorker(QObject):
+    finished = Signal(object, str)  # (repoData|None, err)
+
+    def __init__(self, repo):
+        super().__init__()
+        self.repo = repo
+
+    def run(self):
+        try:
+            from uniquebible.util.GithubUtil import GithubUtil
+            github = GithubUtil(self.repo)
+            self.finished.emit(github.getRepoData(), "")
+        except Exception as e:
+            self.finished.emit(None, str(e))
+
+
+class _GitHubModuleInstallWorker(QObject):
+    finished = Signal(bool, str)
+
+    def __init__(self, repo, folder, items, repoData):
+        super().__init__()
+        self.repo = repo
+        self.folder = folder
+        self.items = items
+        self.repoData = repoData
+
+    def run(self):
+        try:
+            from uniquebible.util.GithubUtil import GithubUtil
+            github = GithubUtil(self.repo)
+            os.makedirs(self.folder, exist_ok=True)
+            for item in self.items:
+                file = os.path.join(self.folder, item + ".zip")
+                github.downloadFile(file, self.repoData[item])
+                with zipfile.ZipFile(file, 'r') as zipped:
+                    zipped.extractall(self.folder)
+                try:
+                    os.remove(file)
+                except Exception:
+                    pass
+            self.finished.emit(True, "")
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
 class Tooltip(QWidget):
 
     def __init__(self, parent):
@@ -1333,41 +1378,76 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
         repo, directory, title, extension = gitHubRepoInfo
         if ("Pygithub" in config.enabled):
             try:
-                from uniquebible.util.GithubUtil import GithubUtil
-
                 installAll = "Install ALL"
-                github = GithubUtil(repo)
-                repoData = github.getRepoData()
-                folder = os.path.join(config.marvelData, directory)
-                items = [item for item in repoData.keys() if not FileUtil.regexFileExists("^{0}.*".format(GithubUtil.getShortname(item).replace(".", "\\.")), folder)]
-                if items:
-                    items.append(installAll)
-                else:
-                    items = ["[All Installed]"]
-                selectedItem, ok = QInputDialog.getItem(self, "UniqueBible",
-                                                config.thisTranslation[title], items, 0, False)
-                if ok and selectedItem:
+                # Repo indexing and downloads can take time; run off the UI thread to avoid freezing.
+                self.displayMessage(config.thisTranslation.get("message_installing", "Installing ..."))
+
+                self._githubIndexThread = QThread()
+                self._githubIndexWorker = _GitHubRepoIndexWorker(repo)
+                self._githubIndexWorker.moveToThread(self._githubIndexThread)
+                self._githubIndexThread.started.connect(self._githubIndexWorker.run)
+
+                def _indexDone(repoData, err):
+                    self._githubIndexThread.quit()
+                    if not repoData:
+                        self.displayMessage(config.thisTranslation["couldNotAccess"] + " " + repo + (f"\n{err}" if err else ""))
+                        return
+
+                    from uniquebible.util.GithubUtil import GithubUtil
+                    folder = os.path.join(config.marvelData, directory)
+                    items = [item for item in repoData.keys()
+                             if not FileUtil.regexFileExists("^{0}.*".format(GithubUtil.getShortname(item).replace(".", "\\.")), folder)]
+                    if items:
+                        items.append(installAll)
+                    else:
+                        items = ["[All Installed]"]
+
+                    selectedItem, ok = QInputDialog.getItem(
+                        self, "UniqueBible", config.thisTranslation[title], items, 0, False
+                    )
+                    if not (ok and selectedItem):
+                        return
+
+                    if selectedItem == "[All Installed]":
+                        return
+
                     if selectedItem == installAll:
-                        self.displayMessage("{0}  {1}".format(config.thisTranslation["message_downloadAllFiles"],
-                                                              config.thisTranslation["message_willBeNoticed"]))
+                        self.displayMessage("{0}  {1}".format(
+                            config.thisTranslation["message_downloadAllFiles"],
+                            config.thisTranslation["message_willBeNoticed"],
+                        ))
                         items.remove(installAll)
-                        print("Downloading {0} files".format(len(items)))
+                        toInstall = items
                     else:
                         self.displayMessage(selectedItem + " " + config.thisTranslation["message_installing"])
-                        items = [selectedItem]
-                    for index, item in enumerate(items):
-                        file = os.path.join(folder, item+".zip")
-                        print("Downloading {0}".format(file))
-                        github.downloadFile(file, repoData[item])
-                        with zipfile.ZipFile(file, 'r') as zipped:
-                            zipped.extractall(folder)
-                        os.remove(file)
-                    print("Downloading complete")
-                    self.reloadResources()
-                    if selectedItem == installAll:
-                        self.displayMessage(config.thisTranslation["message_installed"])
-                    else:
-                        self.installFromGitHub(gitHubRepoInfo)
+                        toInstall = [selectedItem]
+
+                    self._githubInstallThread = QThread()
+                    self._githubInstallWorker = _GitHubModuleInstallWorker(repo, folder, toInstall, repoData)
+                    self._githubInstallWorker.moveToThread(self._githubInstallThread)
+                    self._githubInstallThread.started.connect(self._githubInstallWorker.run)
+
+                    def _installDone(ok2, err2):
+                        self._githubInstallThread.quit()
+                        if ok2:
+                            self.reloadResources()
+                            self.displayMessage(config.thisTranslation["message_installed"])
+                            if selectedItem != installAll:
+                                # allow installing another module without freezing
+                                self.installFromGitHub(gitHubRepoInfo)
+                        else:
+                            self.displayMessage(config.thisTranslation.get("message_failedToInstall", "Failed to install") + (f"\n{err2}" if err2 else ""))
+
+                    self._githubInstallWorker.finished.connect(_installDone)
+                    self._githubInstallWorker.finished.connect(self._githubInstallWorker.deleteLater)
+                    self._githubInstallThread.finished.connect(self._githubInstallThread.deleteLater)
+                    self._githubInstallThread.start()
+
+                self._githubIndexWorker.finished.connect(_indexDone)
+                self._githubIndexWorker.finished.connect(self._githubIndexWorker.deleteLater)
+                self._githubIndexThread.finished.connect(self._githubIndexThread.deleteLater)
+                self._githubIndexThread.start()
+
                 return True
 
             except Exception as ex:
