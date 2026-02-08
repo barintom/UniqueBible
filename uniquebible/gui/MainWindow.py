@@ -1530,6 +1530,7 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             config.widgetForegroundColorPressed = '#FFFFE0'
             config.darkThemeTextColor = '#ffffff'
             config.darkThemeActiveVerseColor = '#aaff7f'
+            config.darkThemeActiveVerseBackgroundColor = ''
         else:
             config.maskMaterialIconColor = "#483D8B"
             config.maskMaterialIconBackground = False
@@ -1541,6 +1542,7 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             config.widgetForegroundColorPressed = "#483D8B"
             config.lightThemeTextColor = "#000000"
             config.lightThemeActiveVerseColor = "#483D8B"
+            config.lightThemeActiveVerseBackgroundColor = ''
         if color:
             color = HtmlColorCodes.colors[color][0]
             config.maskMaterialIconBackground = False
@@ -4009,10 +4011,11 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
     
     def getScrollVerseJS(self, b, c, v, underline=False):
         activeVerseNoColour = config.darkThemeActiveVerseColor if config.theme in ("dark", "night") else config.lightThemeActiveVerseColor
+        activeVerseBgColour = config.darkThemeActiveVerseBackgroundColor if config.theme in ("dark", "night") else config.lightThemeActiveVerseBackgroundColor
         js = """
             var activeVerse = document.getElementById('v{0}.{1}.{2}');
             if (typeof(activeVerse) != 'undefined' && activeVerse != null) {3}
-                activeVerse.scrollIntoView(); activeVerse.style.color = '{5}';
+                activeVerse.scrollIntoView(); activeVerse.style.color = '{5}'; activeVerse.style.backgroundColor = '{7}';
                 {6}
             {4} else if (document.getElementById('v0.0.0') != null) {3}
                 document.getElementById('v0.0.0').scrollIntoView();
@@ -4025,6 +4028,7 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             "}",
             activeVerseNoColour,
             "activeVerse.style.textDecoration = 'underline';" if underline else "",
+            activeVerseBgColour,
         )
         #print("studyView", studyView)
         #print(js)

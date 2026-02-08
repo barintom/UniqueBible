@@ -64,6 +64,12 @@ class MaterialColorDialog(QDialog):
         self.activeVerseColourButton = QPushButton(label)
         self.activeVerseColourButton.clicked.connect(lambda: self.changeActiveVerseColour(True))
 
+        self.activeVerseBackgroundColour = QLabel()
+        self.activeVerseBackgroundColour.setFrameStyle(frameStyle)
+        label = TextUtil.formatConfigLabel("darkThemeActiveVerseBackgroundColor" if config.theme in ("dark", "night") else "lightThemeActiveVerseBackgroundColor")
+        self.activeVerseBackgroundColourButton = QPushButton(label)
+        self.activeVerseBackgroundColourButton.clicked.connect(lambda: self.changeActiveVerseBackgroundColour(True))
+
 #        self.textSelectionColor = QLabel()
 #        self.textSelectionColor.setFrameStyle(frameStyle)
 #        self.textSelectionColorButton = QPushButton(TextUtil.formatConfigLabel("textSelectionColor"))
@@ -103,20 +109,22 @@ class MaterialColorDialog(QDialog):
         layout.addWidget(self.textColour, 6, 1)
         layout.addWidget(self.activeVerseColourButton, 7, 0)
         layout.addWidget(self.activeVerseColour, 7, 1)
+        layout.addWidget(self.activeVerseBackgroundColourButton, 8, 0)
+        layout.addWidget(self.activeVerseBackgroundColour, 8, 1)
         #layout.addWidget(self.textSelectionColorButton, 8, 0)
         #layout.addWidget(self.textSelectionColor, 8, 1)
 
-        layout.addWidget(self.saveButton, 8, 0)
-        layout.addWidget(self.loadButton, 8, 1)
+        layout.addWidget(self.saveButton, 9, 0)
+        layout.addWidget(self.loadButton, 9, 1)
 
-        layout.addWidget(self.defaultButton, 9, 0)
-        layout.addWidget(self.aboutButton, 9, 1)
+        layout.addWidget(self.defaultButton, 10, 0)
+        layout.addWidget(self.aboutButton, 10, 1)
 
         buttons = QDialogButtonBox.Ok
         self.buttonBox = QDialogButtonBox(buttons)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.accepted.connect(self.saveColors)
-        layout.addWidget(self.buttonBox, 10, 1)
+        layout.addWidget(self.buttonBox, 11, 1)
 
         self.setLayout(layout)
 
@@ -170,6 +178,8 @@ class MaterialColorDialog(QDialog):
             ("config.darkThemeTextColor", config.darkThemeTextColor),
             ("config.lightThemeActiveVerseColor", config.lightThemeActiveVerseColor),
             ("config.darkThemeActiveVerseColor", config.darkThemeActiveVerseColor),
+            ("config.lightThemeActiveVerseBackgroundColor", getattr(config, "lightThemeActiveVerseBackgroundColor", "")),
+            ("config.darkThemeActiveVerseBackgroundColor", getattr(config, "darkThemeActiveVerseBackgroundColor", "")),
             #("config.textSelectionColor", config.textSelectionColor),
         )
         with open(fileName, "w", encoding="utf-8") as fileObj:
@@ -191,6 +201,12 @@ class MaterialColorDialog(QDialog):
         self.setLabelColor(self.widgetForegroundColorPressed, QColor(config.widgetForegroundColorPressed))
         self.setLabelColor(self.textColour, QColor(config.darkThemeTextColor if config.theme in ("dark", "night") else config.lightThemeTextColor))
         self.setLabelColor(self.activeVerseColour, QColor(config.darkThemeActiveVerseColor if config.theme in ("dark", "night") else config.lightThemeActiveVerseColor))
+        activeVerseBg = config.darkThemeActiveVerseBackgroundColor if config.theme in ("dark", "night") else config.lightThemeActiveVerseBackgroundColor
+        if activeVerseBg:
+            self.setLabelColor(self.activeVerseBackgroundColour, QColor(activeVerseBg))
+        else:
+            self.activeVerseBackgroundColour.setText("(none)")
+            self.activeVerseBackgroundColour.setAutoFillBackground(False)
         #self.setLabelColor(self.textSelectionColor, QColor(config.textSelectionColor))
 
     def setMaskColor(self):
@@ -265,6 +281,22 @@ class MaterialColorDialog(QDialog):
                 config.darkThemeActiveVerseColor = colorName
             else:
                 config.lightThemeActiveVerseColor = colorName
+            if reload:
+                self.saveColors()
+                self.parent.reloadCurrentRecord(True)
+
+    def changeActiveVerseBackgroundColour(self, reload=True):
+        current = config.darkThemeActiveVerseBackgroundColor if config.theme in ("dark", "night") else config.lightThemeActiveVerseBackgroundColor
+        # QColor('') is invalid; pick a reasonable starting point for the dialog.
+        initial = QColor(current) if current else QColor("#ffffff" if config.theme == "default" else "#000000")
+        color = QColorDialog.getColor(initial, self)
+        if color.isValid():
+            self.setLabelColor(self.activeVerseBackgroundColour, color)
+            colorName = color.name()
+            if config.theme in ("dark", "night"):
+                config.darkThemeActiveVerseBackgroundColor = colorName
+            else:
+                config.lightThemeActiveVerseBackgroundColor = colorName
             if reload:
                 self.saveColors()
                 self.parent.reloadCurrentRecord(True)

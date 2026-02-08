@@ -1580,6 +1580,14 @@ class ConfigUtil:
         setConfig("darkThemeActiveVerseColor", """
         # Active verse colour displayed on dark theme.""",
         "#aaff7f")
+        setConfig("lightThemeActiveVerseBackgroundColor", """
+        # Active verse background colour displayed on light theme.
+        # Leave empty string '' to disable background highlight.""",
+        "")
+        setConfig("darkThemeActiveVerseBackgroundColor", """
+        # Active verse background colour displayed on dark theme.
+        # Leave empty string '' to disable background highlight.""",
+        "")
         setConfig("qtMaterial", """
         # Apply qt-material theme.""",
         False)
