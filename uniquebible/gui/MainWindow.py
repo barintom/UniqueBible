@@ -1518,7 +1518,10 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             ConfigUtil.saveColorConfig()
         elif config.menuLayout == "material":
             if setColours:
-                self.setColours()
+                # If user has customised colours for this theme, keep them.
+                # Otherwise fall back to built-in defaults.
+                if not os.path.exists(ConfigUtil.getColorConfigFilename()):
+                    self.setColours()
         else:
             self.setupMenuLayout(config.menuLayout)
         PluginEventHandler.handleEvent("post_theme_change")
