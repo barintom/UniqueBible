@@ -1,4 +1,6 @@
 import glob, os, sys, logging, traceback
+import signal
+import faulthandler
 from uniquebible import config
 import logging.handlers as handlers
 from uniquebible.util.FileUtil import FileUtil
@@ -41,6 +43,16 @@ if enable_logging:
     logger.addHandler(logHandler)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+    # Make freezes debuggable:
+    # 1) `kill -USR1 <pid>` will dump stack traces of all threads into uba.log
+    # 2) If Python crashes with an uncaught exception, it will be logged too.
+    try:
+        _fh = open(os.path.abspath("uba.log"), "a", buffering=1, encoding="utf-8")
+        faulthandler.enable(file=_fh, all_threads=True)
+        faulthandler.register(signal.SIGUSR1, file=_fh, all_threads=True, chain=False)
+    except Exception:
+        pass
 else:
     logger.addHandler(logging.NullHandler())
 
