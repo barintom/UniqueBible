@@ -1297,7 +1297,11 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             self.installAllMarvelFiles(bibles, installAll)
         else:
             return
-        self.reloadResources()
+        if config.downloadGCloudModulesInSeparateThread:
+            # Avoid blocking the UI while download is running; resources will refresh after install/restart.
+            pass
+        else:
+            self.reloadResources()
         if not config.downloadGCloudModulesInSeparateThread:
             self.installMarvelBibles()
 
@@ -1314,12 +1318,16 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
                                         config.thisTranslation["menu8_commentaries"], items, 0, False)
         if ok and item and not item in ("[All Installed]", installAll):
             self.downloadHelper(commentaries[item])
-            self.reloadResources()
+            if not config.downloadGCloudModulesInSeparateThread:
+                self.reloadResources()
         elif ok and item == installAll:
             self.installAllMarvelFiles(commentaries, installAll)
         else:
             return
-        self.reloadResources()
+        if config.downloadGCloudModulesInSeparateThread:
+            pass
+        else:
+            self.reloadResources()
         if not config.downloadGCloudModulesInSeparateThread:
             self.installMarvelCommentaries()
 
@@ -1339,7 +1347,11 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
                 downloader = Downloader(self, databaseInfo)
                 print("Downloading " + file)
                 downloader.downloadFile(False)
-            self.reloadResources()
+            if config.downloadGCloudModulesInSeparateThread:
+                # Don't block the UI here; downloads run in the background.
+                pass
+            else:
+                self.reloadResources()
             print("Downloading complete")
             if config.downloadGCloudModulesInSeparateThread:
                 self.displayMessage(config.thisTranslation["message_installed"])
@@ -1360,7 +1372,10 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             self.installAllMarvelFiles(datasets, installAll)
         else:
             return
-        self.reloadResources()
+        if config.downloadGCloudModulesInSeparateThread:
+            pass
+        else:
+            self.reloadResources()
         if not config.downloadGCloudModulesInSeparateThread:
             self.installMarvelDatasets()
 
