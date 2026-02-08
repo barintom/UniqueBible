@@ -153,6 +153,35 @@ class _GitHubModuleInstallWorker(QObject):
             self.finished.emit(False, str(e))
 
 
+class _ReloadResourcesWorker(QObject):
+    finished = Signal(object, str)  # (crossPlatformState|None, err)
+
+    def run(self):
+        try:
+            # Reload local catalog first (updates what is installed).
+            CatalogUtil.reloadLocalCatalog()
+
+            # Rebuild resource descriptions used across the UI.
+            config.bibleDescription = {}
+            for file in glob.glob(config.marvelData + "/bibles/*.bible"):
+                name = Path(file).stem
+                bible = Bible(name)
+                config.bibleDescription[name] = bible.bibleInfo()
+
+            config.lexiconDescription = {}
+            for file in glob.glob(config.marvelData + "/lexicons/*.lexicon"):
+                name = Path(file).stem
+                lexicon = Lexicon(name)
+                config.lexiconDescription[name] = lexicon.getSampleTopics()
+
+            # Build CrossPlatform resource lists (can be slow).
+            cp = CrossPlatform()
+            cp.setupResourceLists()
+            self.finished.emit(cp.__dict__, "")
+        except Exception as e:
+            self.finished.emit(None, str(e))
+
+
 class Tooltip(QWidget):
 
     def __init__(self, parent):
@@ -761,6 +790,39 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
         self.setupMenuLayout(config.menuLayout)
         self.reloadControlPanel(show)
 
+    def reloadResourcesAsync(self, show=False):
+        # The synchronous reloadResources() can block the UI for a long time after installs.
+        self._reloadResourcesThread = QThread()
+        self._reloadResourcesWorker = _ReloadResourcesWorker()
+        self._reloadResourcesWorker.moveToThread(self._reloadResourcesThread)
+        self._reloadResourcesThread.started.connect(self._reloadResourcesWorker.run)
+
+        def _done(state, err):
+            self._reloadResourcesThread.quit()
+            if state is None:
+                self.logger.warning("reloadResourcesAsync failed: %s", err)
+                # Still try to refresh menus minimally.
+                self.setupMenuLayout(config.menuLayout)
+                return
+            # Update the existing CrossPlatform instance in-place (other components may hold a reference).
+            for k, v in state.items():
+                try:
+                    setattr(self.crossPlatform, k, v)
+                except Exception:
+                    pass
+            if self.controlPanel:
+                try:
+                    self.controlPanel.setupResourceLists()
+                except Exception:
+                    pass
+            self.setupMenuLayout(config.menuLayout)
+            self.reloadControlPanel(show)
+
+        self._reloadResourcesWorker.finished.connect(_done)
+        self._reloadResourcesWorker.finished.connect(self._reloadResourcesWorker.deleteLater)
+        self._reloadResourcesThread.finished.connect(self._reloadResourcesThread.deleteLater)
+        self._reloadResourcesThread.start()
+
     def reloadControlPanel(self, show=True):
         if self.controlPanel:
             self.controlPanel.close()
@@ -1173,23 +1235,8 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             # Notify users
             if notification:
                 self.displayMessage(config.thisTranslation["message_installed"])
-            # Run post-install disk scans in background to keep UI responsive.
-            self._postInstallThread = QThread()
-            self._postInstallWorker = _ModulePostInstallWorker()
-            self._postInstallWorker.moveToThread(self._postInstallThread)
-            self._postInstallThread.started.connect(self._postInstallWorker.run)
-
-            def _done(ok, err):
-                self._postInstallThread.quit()
-                if not ok and err:
-                    # Best-effort warning only; module is installed already.
-                    self.logger.warning("Post-install refresh failed: %s", err)
-                self.setupMenuLayout(config.menuLayout)
-
-            self._postInstallWorker.finished.connect(_done)
-            self._postInstallWorker.finished.connect(self._postInstallWorker.deleteLater)
-            self._postInstallThread.finished.connect(self._postInstallThread.deleteLater)
-            self._postInstallThread.start()
+            # Full refresh off the UI thread to avoid freezes.
+            self.reloadResourcesAsync(False)
         elif notification:
             self.displayMessage(config.thisTranslation["message_failedToInstall"])
         config.isDownloading = False
@@ -1430,7 +1477,7 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
                     def _installDone(ok2, err2):
                         self._githubInstallThread.quit()
                         if ok2:
-                            self.reloadResources()
+                            self.reloadResourcesAsync(False)
                             self.displayMessage(config.thisTranslation["message_installed"])
                             if selectedItem != installAll:
                                 # allow installing another module without freezing
