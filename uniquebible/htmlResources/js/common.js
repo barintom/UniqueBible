@@ -899,13 +899,15 @@ function ld(lexicalEntry) {
 
 function luV(v, evt) {
     // Toggle verse selection highlighting
-    if (evt && evt.target) {
-        var vidElement = evt.target;
+    if (evt) {
+        // Find the vid element by ID for reliability
+        var vidId = 'v' + activeB + '.' + activeC + '.' + v;
+        var vidElement = document.getElementById(vidId);
         var spanId = 's' + activeB + '.' + activeC + '.' + v;
         var spanElement = document.getElementById(spanId);
         
         // Toggle the verse-selected class on vid element
-        if (vidElement && vidElement.tagName.toLowerCase() === 'vid') {
+        if (vidElement) {
             vidElement.classList.toggle('verse-selected');
         }
         
