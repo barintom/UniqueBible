@@ -1,4 +1,4 @@
-import os, zipfile, gdown, platform
+import os, zipfile, platform, subprocess, sys
 from uniquebible import config
 # import threading
 if config.qtLibrary == "pyside6":
@@ -19,19 +19,37 @@ class DownloadProcess(QObject):
         self.cloudFile, self.localFile = cloudFile, localFile
 
     def downloadFile(self):
+        # Prefer running gdown as a subprocess. In practice this keeps the Qt UI more responsive
+        # than calling the Python API directly (less GIL contention during large downloads).
         try:
             if not config.gdownIsUpdated:
                 installmodule("--upgrade gdown")
                 config.gdownIsUpdated = True
             try:
-                gdown.download(self.cloudFile, self.localFile, quiet=True)
-                print("Downloaded " + self.localFile)
-                connection = True
+                # Ensure gdown cookie file is writable in restricted environments.
+                cookie_file = os.path.join(getattr(config, "ubaUserDir", os.path.expanduser("~")), "temp", "gdown_cookies.txt")
+                os.makedirs(os.path.dirname(cookie_file), exist_ok=True)
+                env = os.environ.copy()
+                env.setdefault("GDOWN_COOKIE_FILE", cookie_file)
+
+                proc = subprocess.run(
+                    [sys.executable, "-m", "gdown", self.cloudFile, "-O", self.localFile, "--quiet"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                )
+                if proc.returncode == 0 and os.path.isfile(self.localFile):
+                    print("Downloaded " + self.localFile)
+                    connection = True
+                else:
+                    if proc.stderr:
+                        print(proc.stderr)
+                    connection = False
             except Exception as ex:
-                cli = "gdown {0} -O {1}".format(self.cloudFile, self.localFile)
-                os.system(cli)
-                print("Downloaded " + self.localFile)
-                connection = True
+                print(ex)
+                connection = False
         except Exception as ex:
             print("Failed to download '{0}'!".format(self.cloudFile))
             print(ex)
