@@ -265,6 +265,8 @@ class MaterialColorDialog(QDialog):
         config.maskMaterialIconColor = config.widgetForegroundColor
         #config.defineStyle()
         #self.parent.setupMenuLayout("material")
+        # Persist first, because resetUI() reloads the theme `.color` file.
+        self.saveColors()
         self.parent.resetUI()
 
     def setPushButtonBackgroundColor(self):
@@ -359,16 +361,19 @@ class MaterialColorDialog(QDialog):
         if color.isValid():
             config.splitterHandleColor = color.name()
             self.setLabelColor(self.splitterHandleColour, color)
+            self.saveColors()
             self._applySplitterPreferencesToMainUI()
 
     def clearSplitterHandleColour(self, reload=True):
         config.splitterHandleColor = ""
         self.splitterHandleColour.setText("(default)")
         self.splitterHandleColour.setAutoFillBackground(False)
+        self.saveColors()
         self._applySplitterPreferencesToMainUI()
 
     def changeSplitterHandleThickness(self, reload=True):
         config.splitterHandleThickness = int(self.splitterHandleThicknessSpin.value())
+        self.saveColors()
         self._applySplitterPreferencesToMainUI()
 
 #    def changeTextSelectionColor(self):
