@@ -9,7 +9,7 @@ from uniquebible.util.ConfigUtil import ConfigUtil
 from uniquebible.util.SystemUtil import SystemUtil
 from uniquebible.gui.Worker import YouTubeDownloader, VLCVideo
 if config.qtLibrary == "pyside6":
-    from PySide6.QtCore import QUrl, Qt, QEvent, QThread, QDir, QTimer
+    from PySide6.QtCore import QUrl, Qt, QEvent, QThread, QDir, QTimer, QObject, Signal
     from PySide6.QtGui import QIcon, QGuiApplication, QFont, QKeySequence, QColor, QPixmap, QCursor, QAction, QShortcut
     from PySide6.QtWidgets import QInputDialog, QLineEdit, QMainWindow, QMessageBox, QWidget, QFileDialog, QLabel, QFrame, QFontDialog, QApplication, QPushButton, QColorDialog, QComboBox, QToolButton, QMenu, QCompleter, QHBoxLayout
     from PySide6.QtWebEngineCore import QWebEnginePage
@@ -17,7 +17,7 @@ if config.qtLibrary == "pyside6":
     from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
     from PySide6.QtMultimediaWidgets import QVideoWidget
 else:
-    from qtpy.QtCore import QUrl, Qt, QEvent, QThread, QDir, QTimer
+    from qtpy.QtCore import QUrl, Qt, QEvent, QThread, QDir, QTimer, QObject, Signal
     from qtpy.QtGui import QIcon, QGuiApplication, QFont, QKeySequence, QColor, QPixmap, QCursor
     from qtpy.QtWidgets import QAction, QInputDialog, QLineEdit, QMainWindow, QMessageBox, QWidget, QFileDialog, QLabel, QFrame, QFontDialog, QApplication, QPushButton, QShortcut, QColorDialog, QComboBox, QToolButton, QMenu, QCompleter, QHBoxLayout
     from qtpy.QtWebEngineWidgets import QWebEnginePage
@@ -93,6 +93,19 @@ from uniquebible.gui.AlephMainWindow import AlephMainWindow
 from uniquebible.gui.ClassicMainWindow import ClassicMainWindow
 from uniquebible.gui.FocusMainWindow import FocusMainWindow
 from uniquebible.gui.MaterialMainWindow import MaterialMainWindow
+
+
+class _ModulePostInstallWorker(QObject):
+    finished = Signal(bool, str)
+
+    def run(self):
+        try:
+            # These can involve disk scans and can take noticeable time on slow storage.
+            Commentary().reloadFileLookup()
+            CatalogUtil.reloadLocalCatalog()
+            self.finished.emit(True, "")
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class Tooltip(QWidget):
@@ -1115,12 +1128,29 @@ config.mainWindow.audioPlayer.setAudioOutput(config.audioOutput)"""
             # Notify users
             if notification:
                 self.displayMessage(config.thisTranslation["message_installed"])
+            # Run post-install disk scans in background to keep UI responsive.
+            self._postInstallThread = QThread()
+            self._postInstallWorker = _ModulePostInstallWorker()
+            self._postInstallWorker.moveToThread(self._postInstallThread)
+            self._postInstallThread.started.connect(self._postInstallWorker.run)
+
+            def _done(ok, err):
+                self._postInstallThread.quit()
+                if not ok and err:
+                    # Best-effort warning only; module is installed already.
+                    self.logger.warning("Post-install refresh failed: %s", err)
+                self.setupMenuLayout(config.menuLayout)
+
+            self._postInstallWorker.finished.connect(_done)
+            self._postInstallWorker.finished.connect(self._postInstallWorker.deleteLater)
+            self._postInstallThread.finished.connect(self._postInstallThread.deleteLater)
+            self._postInstallThread.start()
         elif notification:
             self.displayMessage(config.thisTranslation["message_failedToInstall"])
         config.isDownloading = False
-        Commentary().reloadFileLookup()
-        CatalogUtil.reloadLocalCatalog()
-        self.setupMenuLayout(config.menuLayout)
+        if not os.path.isfile(localFile):
+            # Nothing installed, but refresh menus anyway.
+            self.setupMenuLayout(config.menuLayout)
 
     def downloadGoogleStaticMaps(self):
         # https://developers.google.com/maps/documentation/maps-static/intro
