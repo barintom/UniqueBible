@@ -897,10 +897,8 @@ function ld(lexicalEntry) {
     document.title = "_lexicaldata:::"+lexicalEntry;
 }
 
-function luV(v) {
+function luV(v, evt) {
     // Toggle verse selection highlighting
-    // Use window.event for compatibility with inline onclick handlers
-    var evt = window.event || arguments.callee.caller.arguments[0];
     if (evt && evt.target) {
         var vidElement = evt.target;
         var spanId = 's' + activeB + '.' + activeC + '.' + v;

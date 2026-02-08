@@ -775,7 +775,7 @@ input.addEventListener('keyup', function(event) {0}
                 chapter += '<ref onclick="hiV({0},{1},{2},\'hl1\')" class="ohl1">&#9678;</ref>'.format(b, c, v)
                 chapter += '<ref onclick="hiV({0},{1},{2},\'hl2\')" class="ohl2">&#9678;</ref>'.format(b, c, v)
                 chapter += '<ref onclick="hiV({0},{1},{2},\'ul1\')" class="oul1">&#9683;</ref>'.format(b, c, v)
-            chapter += '<vid id="v{0}.{1}.{2}" onclick="luV({2})" onmouseover="qV({2})" ondblclick="mV({2})">{2}</vid> '.format(b, c, v)
+            chapter += '<vid id="v{0}.{1}.{2}" onclick="luV({2}, event)" onmouseover="qV({2})" ondblclick="mV({2})">{2}</vid> '.format(b, c, v)
             # add read verse icon
             if source in ("main", "http"):
                 readVerse = Bible.insertReadBibleLink(text, b, c, v)
@@ -1362,7 +1362,7 @@ class Bible:
 
     def formatVerseNumber(self, mp3Text, match):
         b, c, v, tagEnding = match.groups()
-        verseTag = '<vid id="v{2}.{3}.{0}" onclick="luV({0})" onmouseover="qV({0})" ondblclick="mV({0})"{1}'.format(v, tagEnding, b, c)
+        verseTag = '<vid id="v{2}.{3}.{0}" onclick="luV({0}, event)" onmouseover="qV({0})" ondblclick="mV({0})"{1}'.format(v, tagEnding, b, c)
         v = int(v)
         # add tts indicator
         if config.displayVerseAudioBibleIcon:
