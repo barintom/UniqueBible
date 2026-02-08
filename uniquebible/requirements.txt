@@ -5,6 +5,10 @@ requests
 apsw
 markdown
 opencc-python-reimplemented
+pydub
+mammoth
+numpy
+PyGithub
 mistralai
 openai
 groq
