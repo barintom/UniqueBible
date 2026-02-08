@@ -650,6 +650,17 @@ vid {
     font-size: 70%;
 }
 
+/* verse selection highlighting */
+vid.verse-selected {
+    background-color: #505050;
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+span.verse-selected {
+    background-color: #404040;
+}
+
 /* unvisited link */
 
 a:link {

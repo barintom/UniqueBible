@@ -898,6 +898,21 @@ function ld(lexicalEntry) {
 }
 
 function luV(v) {
+    // Toggle verse selection highlighting
+    var vidElement = event.target;
+    var spanId = 's' + activeB + '.' + activeC + '.' + v;
+    var spanElement = document.getElementById(spanId);
+    
+    // Toggle the verse-selected class on vid element
+    if (vidElement && vidElement.tagName.toLowerCase() === 'vid') {
+        vidElement.classList.toggle('verse-selected');
+    }
+    
+    // Toggle the verse-selected class on span element containing verse text
+    if (spanElement) {
+        spanElement.classList.toggle('verse-selected');
+    }
+    
     var verseReference = bcvToVerseRefence(activeB,activeC,v);
     document.title = "_stayOnSameTab:::";
     // document.title = "BIBLE:::"+activeText+":::"+verseReference;
