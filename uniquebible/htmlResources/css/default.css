@@ -651,13 +651,13 @@ vid {
 
 /* verse selection highlighting */
 vid.verse-selected {
-    background-color: #d3d3d3;
+    background-color: #b8b8b8;
     border-radius: 3px;
     padding: 2px 4px;
 }
 
 span.verse-selected {
-    background-color: #f0f0f0;
+    background-color: #e0e0e0;
 }
 
 /* unvisited link */
