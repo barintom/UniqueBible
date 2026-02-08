@@ -1588,6 +1588,13 @@ class ConfigUtil:
         # Active verse background colour displayed on dark theme.
         # Leave empty string '' to disable background highlight.""",
         "")
+        setConfig("splitterHandleColor", """
+        # Splitter handle colour (applies to all themes).
+        # Leave empty string '' to use the theme default.""",
+        "")
+        setConfig("splitterHandleThickness", """
+        # Splitter handle thickness in pixels (applies to all themes).""",
+        5)
         setConfig("qtMaterial", """
         # Apply qt-material theme.""",
         False)

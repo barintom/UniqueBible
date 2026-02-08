@@ -6,11 +6,11 @@ from uniquebible.util.ConfigUtil import ConfigUtil
 
 if config.qtLibrary == "pyside6":
     from PySide6.QtWidgets import QLabel, QPushButton, QFrame, QDialog, QGridLayout, QColorDialog, QApplication, \
-    QFileDialog, QDialogButtonBox
+    QFileDialog, QDialogButtonBox, QSpinBox
     from PySide6.QtGui import QColor, QPalette
 else:
     from qtpy.QtWidgets import QLabel, QPushButton, QFrame, QDialog, QGridLayout, QColorDialog, QApplication, \
-        QFileDialog, QDialogButtonBox
+        QFileDialog, QDialogButtonBox, QSpinBox
     from qtpy.QtGui import QColor, QPalette
 from uniquebible.util.TextUtil import TextUtil
 
@@ -70,6 +70,18 @@ class MaterialColorDialog(QDialog):
         self.activeVerseBackgroundColourButton = QPushButton(label)
         self.activeVerseBackgroundColourButton.clicked.connect(lambda: self.changeActiveVerseBackgroundColour(True))
 
+        self.splitterHandleColour = QLabel()
+        self.splitterHandleColour.setFrameStyle(frameStyle)
+        self.splitterHandleColourButton = QPushButton(TextUtil.formatConfigLabel("splitterHandleColor"))
+        self.splitterHandleColourButton.clicked.connect(lambda: self.changeSplitterHandleColour(True))
+        self.splitterHandleColourClearButton = QPushButton(config.thisTranslation.get("clear", "Clear"))
+        self.splitterHandleColourClearButton.clicked.connect(lambda: self.clearSplitterHandleColour(True))
+
+        self.splitterHandleThicknessLabel = QLabel(TextUtil.formatConfigLabel("splitterHandleThickness"))
+        self.splitterHandleThicknessSpin = QSpinBox()
+        self.splitterHandleThicknessSpin.setRange(1, 50)
+        self.splitterHandleThicknessSpin.valueChanged.connect(lambda _: self.changeSplitterHandleThickness(True))
+
 #        self.textSelectionColor = QLabel()
 #        self.textSelectionColor.setFrameStyle(frameStyle)
 #        self.textSelectionColorButton = QPushButton(TextUtil.formatConfigLabel("textSelectionColor"))
@@ -111,20 +123,26 @@ class MaterialColorDialog(QDialog):
         layout.addWidget(self.activeVerseColour, 7, 1)
         layout.addWidget(self.activeVerseBackgroundColourButton, 8, 0)
         layout.addWidget(self.activeVerseBackgroundColour, 8, 1)
+
+        layout.addWidget(self.splitterHandleColourButton, 9, 0)
+        layout.addWidget(self.splitterHandleColour, 9, 1)
+        layout.addWidget(self.splitterHandleColourClearButton, 9, 2)
+        layout.addWidget(self.splitterHandleThicknessLabel, 10, 0)
+        layout.addWidget(self.splitterHandleThicknessSpin, 10, 1)
         #layout.addWidget(self.textSelectionColorButton, 8, 0)
         #layout.addWidget(self.textSelectionColor, 8, 1)
 
-        layout.addWidget(self.saveButton, 9, 0)
-        layout.addWidget(self.loadButton, 9, 1)
+        layout.addWidget(self.saveButton, 11, 0)
+        layout.addWidget(self.loadButton, 11, 1)
 
-        layout.addWidget(self.defaultButton, 10, 0)
-        layout.addWidget(self.aboutButton, 10, 1)
+        layout.addWidget(self.defaultButton, 12, 0)
+        layout.addWidget(self.aboutButton, 12, 1)
 
         buttons = QDialogButtonBox.Ok
         self.buttonBox = QDialogButtonBox(buttons)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.accepted.connect(self.saveColors)
-        layout.addWidget(self.buttonBox, 11, 1)
+        layout.addWidget(self.buttonBox, 13, 1)
 
         self.setLayout(layout)
 
@@ -180,6 +198,9 @@ class MaterialColorDialog(QDialog):
             ("config.darkThemeActiveVerseColor", config.darkThemeActiveVerseColor),
             ("config.lightThemeActiveVerseBackgroundColor", getattr(config, "lightThemeActiveVerseBackgroundColor", "")),
             ("config.darkThemeActiveVerseBackgroundColor", getattr(config, "darkThemeActiveVerseBackgroundColor", "")),
+            # Intentionally not stored in theme colour files; these apply to all themes:
+            # ("config.splitterHandleColor", getattr(config, "splitterHandleColor", "")),
+            # ("config.splitterHandleThickness", getattr(config, "splitterHandleThickness", 5)),
             #("config.textSelectionColor", config.textSelectionColor),
         )
         with open(fileName, "w", encoding="utf-8") as fileObj:
@@ -207,7 +228,38 @@ class MaterialColorDialog(QDialog):
         else:
             self.activeVerseBackgroundColour.setText("(none)")
             self.activeVerseBackgroundColour.setAutoFillBackground(False)
+
+        splitterColor = getattr(config, "splitterHandleColor", "")
+        if splitterColor:
+            self.setLabelColor(self.splitterHandleColour, QColor(splitterColor))
+        else:
+            self.splitterHandleColour.setText("(default)")
+            self.splitterHandleColour.setAutoFillBackground(False)
+
+        thickness = getattr(config, "splitterHandleThickness", 5)
+        try:
+            thickness = int(thickness)
+        except Exception:
+            thickness = 5
+        if thickness <= 0:
+            thickness = 5
+        self.splitterHandleThicknessSpin.blockSignals(True)
+        self.splitterHandleThicknessSpin.setValue(thickness)
+        self.splitterHandleThicknessSpin.blockSignals(False)
         #self.setLabelColor(self.textSelectionColor, QColor(config.textSelectionColor))
+
+    def _applySplitterPreferencesToMainUI(self):
+        # Apply changes immediately without requiring restart/theme switch.
+        try:
+            cw = getattr(self.parent, "centralWidget", None)
+            if not cw:
+                return
+            if hasattr(cw, "parallelSplitter"):
+                cw._applySplitterHandleStyle(cw.parallelSplitter)
+            if hasattr(cw, "instantSplitter"):
+                cw._applySplitterHandleStyle(cw.instantSplitter)
+        except Exception:
+            pass
 
     def setMaskColor(self):
         config.maskMaterialIconBackground = False
@@ -300,6 +352,25 @@ class MaterialColorDialog(QDialog):
             if reload:
                 self.saveColors()
                 self.parent.reloadCurrentRecord(True)
+
+    def changeSplitterHandleColour(self, reload=True):
+        current = getattr(config, "splitterHandleColor", "")
+        initial = QColor(current) if current else QColor(config.widgetForegroundColor)
+        color = QColorDialog.getColor(initial, self)
+        if color.isValid():
+            config.splitterHandleColor = color.name()
+            self.setLabelColor(self.splitterHandleColour, color)
+            self._applySplitterPreferencesToMainUI()
+
+    def clearSplitterHandleColour(self, reload=True):
+        config.splitterHandleColor = ""
+        self.splitterHandleColour.setText("(default)")
+        self.splitterHandleColour.setAutoFillBackground(False)
+        self._applySplitterPreferencesToMainUI()
+
+    def changeSplitterHandleThickness(self, reload=True):
+        config.splitterHandleThickness = int(self.splitterHandleThicknessSpin.value())
+        self._applySplitterPreferencesToMainUI()
 
 #    def changeTextSelectionColor(self):
 #        color = QColorDialog.getColor(QColor(config.textSelectionColor), self)
