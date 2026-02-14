@@ -1548,8 +1548,7 @@ class Converter:
                 scripture = self.convertMyBibleBibleTags(scripture, book, strong_numbers_prefix)
 
                 # fix bible note links
-                if notes:
-                    scripture = re.sub("<f>([^\n<>]+?)</f>", r"<sup><ref onclick='bn({0}, {1}, {2}, {3}\1{3})'>&oplus;</ref></sup>".format(book, chapter, verse, '"'), scripture)
+                scripture = re.sub("<f>([^\n<>]+?)</f>", r"<sup><ref onclick='bn({0}, {1}, {2}, {3}\1{3})'>&oplus;</ref></sup>".format(book, chapter, verse, '"'), scripture)
 
                 # verse number formatting
                 scripture = self.formatVerseNumber(book, chapter, verse, scripture)
