@@ -1403,22 +1403,6 @@ class TextCommandParser:
         else:
             formattedBiblesFolder = os.path.join(config.marvelData, "bibles")
             formattedBibles = [f[:-6] for f in os.listdir(formattedBiblesFolder) if os.path.isfile(os.path.join(formattedBiblesFolder, f)) and f.endswith(".bible") and not re.search(r"^[\._]", f)]
-            # Switch between reading plain bibles (from bibles.sqlite tables) and formatted bibles
-            # (from individual *.bible databases). Without this, selecting a newly downloaded formatted
-            # bible after previously viewing a plain bible may appear to "not work" until restart.
-            if text in formattedBibles and text not in ("OHGB", "OHGBi", "LXX") and not config.readFormattedBibles:
-                config.readFormattedBibles = True
-                if self.parent is not None:
-                    self.parent.enableParagraphButtonAction(False)
-            elif text in ("MOB", "MIB", "MTB", "MPB", "MAB", "LXX1i", "LXX2i", "LXX1", "LXX2") and not config.readFormattedBibles:
-                config.readFormattedBibles = True
-                if self.parent is not None:
-                    self.parent.enableParagraphButtonAction(False)
-            elif config.readFormattedBibles and (((text in ("OHGBi", "OHGB") or not text in formattedBibles) and view == "main") or text == "LXX"):
-                config.readFormattedBibles = False
-                if self.parent is not None:
-                    self.parent.enableParagraphButtonAction(False)
-
             # Custom font styling for Bible
             (fontFile, fontSize, css) = Bible(text).getFontInfo()
             if view == "main":
