@@ -251,6 +251,11 @@ verseNoSingleClickAction = 'INDEX'
 verseNoDoubleClickAction = '_cp0'
 startFullScreen = False
 linuxStartFullScreen = False
+mainWindowX = 0
+mainWindowY = 0
+mainWindowWidth = 1354
+mainWindowHeight = 960
+mainWindowMaximized = True
 enableClipboardMonitoring = False
 enableSystemTrayOnLinux = False
 piper = False
@@ -377,14 +382,14 @@ originalTexts = ['original',
  'LXX2i']
 rtlTexts = ['original', 'MOB', 'MAB', 'MIB', 'MPB', 'OHGB', 'OHGBi', 'WLC', 'WLCx']
 openBibleInMainViewOnly = False
-mainText = 'KJV'
+mainText = 'CSP'
 mainB = 1
 mainC = 1
-mainV = 2
+mainV = 9
 studyText = 'NET'
 studyB = 1
 studyC = 1
-studyV = 2
+studyV = 9
 liveFilterBookFilter = []
 bibleSearchRange = 'clear'
 customBooksRangeSearch = ''
@@ -406,7 +411,7 @@ favouriteBibleSC = 'CUVs'
 favouriteBibleSC2 = 'KJV'
 favouriteBibleSC3 = 'NET'
 addFavouriteToMultiRef = True
-compareParallelList = ['KJV', 'NET', 'OHGBi']
+compareParallelList = ['KJV', 'NET']
 enforceCompareParallel = False
 compareOnStudyWindow = False
 showUserNoteIndicator = True
@@ -415,7 +420,7 @@ syncAction = ''
 commentaryText = 'CBSC'
 commentaryB = 1
 commentaryC = 1
-commentaryV = 2
+commentaryV = 9
 concordance = 'OHGBi'
 concordanceEntry = ''
 topic = 'EXLBT'
@@ -465,18 +470,9 @@ defaultLexiconLXX = 'LXX'
 defaultLexiconGK = 'MCGED'
 defaultLexiconLN = 'LN'
 maximumHistoryRecord = 50
-currentRecord = {'main': 30, 'study': 6}
+currentRecord = {'main': 49, 'study': 7}
 history = {'external': ['note_editor.uba'],
- 'main': ['BIBLE:::KJV:::Genesis 1:1',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:1',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:3',
-          'BIBLE:::KJV:::Gen 1:3',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:3',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:4',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:3',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:4',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:3',
-          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:2',
+ 'main': ['SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:2',
           'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:3',
           'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:2',
           'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:1',
@@ -497,16 +493,49 @@ history = {'external': ['note_editor.uba'],
           'BIBLE:::KJV:::Gen 1:14',
           'BIBLE:::KJV:::Gen 1:20',
           'BIBLE:::KJV:::Gen 1:24',
-          'BIBLE:::KJV:::Gen 1:2'],
+          'BIBLE:::KJV:::Gen 1:2',
+          'BIBLE:::CUV:::Gen 1:2',
+          'BIBLE:::CUVs:::Gen 1:2',
+          'BIBLE:::BSB:::Gen 1:2',
+          'BIBLE:::BSB:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET_OHGBi:::Gen 1:9',
+          'BIBLE:::ASV:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'BIBLE:::ASV:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'BIBLE:::ASV:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'BIBLE:::ASV:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'BIBLE:::MOB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET:::Gen 1:9',
+          'BIBLE:::MOB:::Gen 1:9',
+          'BIBLE:::ASV:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET:::Gen 1:9',
+          'BIBLE:::MOB:::Gen 1:9',
+          'BIBLE:::OHGB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET:::Gen 1:9',
+          'BIBLE:::MOB:::Gen 1:9',
+          'SIDEBYSIDE:::KJV_NET:::Gen 1:9',
+          'BIBLE:::CSP:::Gen 1:9'],
  'study': ['BIBLE:::NET:::John 3:16',
            'INDEX:::Gen 1:20',
            'INDEX:::Gen 1:11',
            'INDEX:::Gen 1:14',
            'INDEX:::Gen 1:20',
            'INDEX:::Gen 1:24',
-           'INDEX:::Gen 1:2']}
-tabHistory = {'main': {'0': 'BIBLE:::KJV:::Gen 1:2'}, 'study': {'0': 'INDEX:::Gen 1:2'}}
-installHistory = {}
+           'INDEX:::Gen 1:2',
+           'INDEX:::Gen 1:9']}
+tabHistory = {'main': {'0': 'BIBLE:::CSP:::Gen 1:9', '1': 'BIBLE:::ASV:::Gen 1:9'},
+ 'study': {'0': 'INDEX:::Gen 1:9'}}
+installHistory = {'BSB.bible': '1fQX8cT12LE9Q3dBUJyezTYg4a0AbdKbN',
+ 'CUV.bible': '1SuXGZIx_ivz9ztPvnylO_ComYOYrJyzk',
+ 'CUVs.bible': '1cu0FFIb_Zc3lQ71P1EJB3P8E5vDLnOt6',
+ 'ISV.bible': '1_nmaakABx8wVsQHdBL9rVh2wtRK8uyyW'}
 useWebbrowser = True
 showInformation = True
 windowStyle = 'Fusion'
@@ -629,4 +658,4 @@ downloadGCloudModulesInSeparateThread = True
 apiServerClientId = ''
 apiServerClientSecret = ''
 iModeSplitterSizes = [707, 367]
-pModeSplitterSizes = [1035, 1113]
+pModeSplitterSizes = [1818, 594]
