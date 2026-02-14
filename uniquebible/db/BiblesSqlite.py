@@ -1380,6 +1380,17 @@ class Bible:
             mp3Text = FileUtil.getMP3TextFile(self.text)
             # e.g. <vid id="v1.1.1" onclick="luV(1)">1</vid>
             chapter += re.sub(r'<vid id="v([0-9]+?).([0-9]+?).([0-9]+?)" onclick="luV\([0-9]+?\)"(.*?>.*?</vid>[ ]*)', partial(self.formatVerseNumber, mp3Text), scripture[0])
+            # Inject AGBTS subheadings if not already present in the HTML
+            if config.addTitleToPlainChapter:
+                agbtsData = AGBTSData()
+                chapterSubheadings = agbtsData.getchapterSubheadings(b, c)
+                if chapterSubheadings:
+                    hasBuiltInSubheadings = '<u><b>' in chapter
+                    if not hasBuiltInSubheadings:
+                        for sb, sc, sv, subText in chapterSubheadings:
+                            vidPattern = f'<vid id="v{b}.{c}.{sv}"'
+                            subHeading = f'<br><u><b>{subText}</b></u><br>'
+                            chapter = chapter.replace(vidPattern, subHeading + vidPattern)
             divTag = "<div>"
             if self.text in config.rtlTexts and b < 40:
                 divTag = "<div style='direction: rtl;'>"
