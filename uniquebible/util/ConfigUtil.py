@@ -851,6 +851,21 @@ class ConfigUtil:
         setConfig("linuxStartFullScreen", """
         # Start UBA with full-screen on Linux os""",
         False)
+        setConfig("mainWindowX", """
+        # Last horizontal position of the main window""",
+        -1)
+        setConfig("mainWindowY", """
+        # Last vertical position of the main window""",
+        -1)
+        setConfig("mainWindowWidth", """
+        # Last width of the main window""",
+        -1)
+        setConfig("mainWindowHeight", """
+        # Last height of the main window""",
+        -1)
+        setConfig("mainWindowMaximized", """
+        # Start UBA with the main window maximized""",
+        False)
         setConfig("enableClipboardMonitoring", """
         # Enable Clipboard Monitoring""",
         False)
