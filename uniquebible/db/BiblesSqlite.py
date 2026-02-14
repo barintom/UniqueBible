@@ -1269,7 +1269,37 @@ class Bible:
         else:
             return ""
 
+    def readTextVerseFromBibleTable(self, b, c, v):
+        """Extract a single verse's text from the Bible table's formatted chapter HTML.
+        Used for Marvel bibles where the Verses table has consonantal text without vowels,
+        but the Bible table has the full vocalized text."""
+        if not self.checkTableExists("Bible"):
+            return None
+        query = "SELECT Scripture FROM Bible WHERE Book=? AND Chapter=?"
+        self.cursor.execute(query, (b, c))
+        result = self.cursor.fetchone()
+        if not result:
+            return None
+        html = result[0]
+        pattern = r'<vid id="v\d+\.\d+\.(\d+)"[^>]*>\d+</vid>'
+        parts = re.split(pattern, html)
+        # parts alternates: [pre-text, verse_num, verse_text, verse_num, verse_text, ...]
+        for i in range(1, len(parts) - 1, 2):
+            if int(parts[i]) == v:
+                verseText = parts[i + 1].strip()
+                verseText = re.sub(r'</div>\s*$', '', verseText)
+                return verseText
+        return None
+
     def readTextVerse(self, b, c, v, noAudioTag=False):
+        # For Marvel bibles, prefer reading from Bible table (vocalized text)
+        if self.text in ("MOB", "MIB", "MAB", "MPB", "MTB"):
+            vocalizedText = self.readTextVerseFromBibleTable(b, c, v)
+            if vocalizedText is not None:
+                if config.runMode == "api-server" or noAudioTag:
+                    return (b, c, v, vocalizedText)
+                else:
+                    return (b, c, v, f"{FileUtil.getVerseAudioTag(self.text, b, c, v)}{vocalizedText}")
         if self.checkTableExists("Verses"):
             query = "SELECT Book, Chapter, Verse, Scripture FROM Verses WHERE Book=? AND Chapter=? AND Verse=?"
             self.cursor.execute(query, (b, c, v))
